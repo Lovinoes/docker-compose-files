@@ -1,0 +1,52 @@
+# /opt/smokeping/
+# https://github.com/linuxserver/docker-smokeping
+
+name: SmokePing
+services:
+  smokeping:
+    image: lscr.io/linuxserver/smokeping:latest
+    container_name: smokeping
+    restart: unless-stopped
+    ports:
+      - 8081:80
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Berlin
+    volumes:
+      - /opt/smokeping/config:/config
+      - /opt/smokeping/data:/data
+      # Theme https://github.com/maxsrl/SmokePing-Dark
+      #- /opt/smokeping/basepage.html:/etc/smokeping/basepage.html
+    labels:
+      autoheal: "true"
+    networks:
+      smokeping-net:
+        ipv4_address: 172.21.0.10
+        ipv6_address: fd00:172:21::10
+
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: autoheal-sp
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: all
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      smokeping-net:
+        ipv4_address: 172.21.0.11
+        ipv6_address: fd00:172:21::11
+
+networks:
+  smokeping-net:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/16
+          gateway: 172.21.0.1
+        - subnet: fd00:172:21::/64
+          gateway: fd00:172:21::1

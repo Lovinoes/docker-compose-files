@@ -1,0 +1,33 @@
+# /opt/adguard/
+# https://github.com/AdguardTeam/AdGuardHome
+
+name: AdGuardHome
+services:
+  adguardhome:
+    image: adguard/adguardhome
+    container_name: adguardhome
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - config:/opt/adguardhome/conf # app configuration
+      - work:/opt/adguardhome/work # app working directory
+    cap_add:
+      - NET_BIND_SERVICE
+    labels:
+      autoheal: "true"
+
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: autoheal
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: "true"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  config:
+    driver: local
+  work:
+    driver: local

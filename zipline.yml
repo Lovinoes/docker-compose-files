@@ -1,0 +1,111 @@
+# /opt/zipline/
+# https://github.com/diced/zipline
+
+name: Zipline
+services:
+  zipline:
+    image: ghcr.io/diced/zipline:v4
+    container_name: zipline-v4
+    restart: unless-stopped
+    ports:
+      - '8083:3000'
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgres://${POSTGRESQL_USER:-zipline}:${POSTGRESQL_PASSWORD}@postgresql:5432/${POSTGRESQL_DB:-zipline}
+      - CORE_HOST=0.0.0.0
+      - CORE_PORT=3000
+      - CORE_LOGGER=true
+     #- CORE_RETURN_HTTPS=true
+     #- CORE_DEFAULT_DOMAIN=example.com
+     #- WEBSITE_TITLE=example.com
+     #- WEBSITE_TITLE_LOGO=https://example.com/logo.png
+      - WEBSITE_SHOW_FILES_PER_USER=true
+      - FEATURES_USER_REGISTRATION=false
+      - EXIF_ENABLED=true
+      - EXIF_REMOVE_GPS=true
+     #- SSL_KEY=/etc/letsencrypt/live/example.com/privkey.pem
+     #- SSL_CERT=/etc/letsencrypt/live/example.com/fullchain.pem
+    depends_on:
+      - postgresql
+    volumes:
+      - './uploads:/zipline/uploads'
+      - './public:/zipline/public'
+      - './themes:/zipline/themes'
+     # why do I mount the whole letsencrypt folder???
+     #- '/etc/letsencrypt:/etc/letsencrypt:ro'
+    labels:
+      autoheal: "true"
+    networks:
+      zipline-net:
+        ipv4_address: 172.23.0.10
+        ipv6_address: fd00:172:23::10
+
+  postgresql:
+    image: postgres:16
+    container_name: postgres-v16
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRESQL_USER:-zipline}
+      POSTGRES_PASSWORD: ${POSTGRESQL_PASSWORD:?POSTGRESSQL_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRESQL_DB:-zipline}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'zipline']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      autoheal: "true"
+    networks:
+      zipline-net:
+        ipv4_address: 172.23.0.11
+        ipv6_address: fd00:172:23::11
+
+  watchtower:
+    image: nickfedor/watchtower:latest
+    container_name: watchtower-zip
+    restart: unless-stopped
+    environment:
+      WATCHTOWER_CLEANUP: true
+      WATCHTOWER_POLL_INTERVAL: 3600
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      autoheal: "true"
+    networks:
+      zipline-net:
+        ipv4_address: 172.23.0.12
+        ipv6_address: fd00:172:23::12
+
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: autoheal-zip
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: all
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      zipline-net:
+        ipv4_address: 172.23.0.13
+        ipv6_address: fd00:172:23::13
+
+volumes:
+  pgdata:
+
+networks:
+  zipline-net:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.23.0.0/16
+          gateway: 172.23.0.1
+        - subnet: fd00:172:23::/64
+          gateway: fd00:172:23::1

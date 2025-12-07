@@ -1,0 +1,63 @@
+# /opt/vaultwarden/
+# https://github.com/dani-garcia/vaultwarden
+
+name: Vaultwarden
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    ports:
+     - 8082:80
+    volumes:
+     - ./bitwarden:/data:rw
+    environment:
+     - ADMIN_TOKEN='ultra secret argon2id here'
+     - WEBSOCKET_ENABLED=true
+     - SIGNUPS_ALLOWED=false
+    labels:
+      autoheal: "true"
+    networks:
+      vaultwarden-net:
+        ipv4_address: 172.22.0.10
+        ipv6_address: fd00:172:22::10
+
+  watchtower:
+    image: nickfedor/watchtower:latest
+    container_name: watchtower-vw
+    restart: unless-stopped
+    environment:
+      WATCHTOWER_CLEANUP: true
+      WATCHTOWER_POLL_INTERVAL: 3600
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      autoheal: "true"
+    vaultwarden-net:
+      ipv4_address: 172.22.0.11
+      ipv6_address: fd00:172:22::11
+
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: autoheal-vw
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: all
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    vaultwarden-net:
+      ipv4_address: 172.22.0.12
+      ipv6_address: fd00:172:22::12
+
+networks:
+  vaultwarden-net:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.22.0.0/16
+          gateway: 172.22.0.1
+        - subnet: fd00:172:22::/64
+          gateway: fd00:172:22::1
