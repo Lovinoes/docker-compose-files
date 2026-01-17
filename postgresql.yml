@@ -1,0 +1,45 @@
+services:
+  postgresql:
+    image: ghcr.io/calagopus/pgautoupgrade:18-alpine
+    container_name: postgresql
+    restart: unless-stopped
+    ports:
+      - 5432:5432
+    environment:
+      TZ: Europe/Berlin
+      # .env cuz im lazy and cuz why not
+      POSTGRES_USER: ${USER}
+      POSTGRES_PASSWORD: ${PASSWORD}
+      PGDATA: /data
+    volumes:
+      - ./postgres:/data
+      # put em certs in certs/ and do wharever you want, chown with 70:70 or shit wont work
+      - ./ssl:/ssl:ro
+    labels:
+      autoheal: "true"
+    networks:
+      postgresql-net:
+        ipv4_address: 172.24.0.10
+        ipv6_address: fd00:172:24::10
+
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: postgresql-heal
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: "true"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+networks:
+  postgresql-net:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.24.0.0/16
+          gateway: 172.24.0.1
+        - subnet: fd00:172:24::/64
+          gateway: fd00:172:24::1
