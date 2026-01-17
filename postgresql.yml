@@ -12,6 +12,7 @@ services:
       POSTGRES_PASSWORD: ${PASSWORD}
       PGDATA: /data
     volumes:
+      # other file structure yesyes
       - ./postgres:/data
       # put em certs in certs/ and do wharever you want, chown with 70:70 or shit wont work
       - ./ssl:/ssl:ro
