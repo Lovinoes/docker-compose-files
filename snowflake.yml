@@ -1,0 +1,29 @@
+services:
+    snowflake-proxy:
+        network_mode: host
+        image: containers.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake:latest
+        container_name: snowflake-proxy
+        restart: unless-stopped
+        # For a full list of Snowflake Proxy CLI parameters see
+        # https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/tree/main/proxy?ref_type=heads#running-a-standalone-snowflake-proxy
+        command: [ "-ephemeral-ports-range", "30000:60000" ]
+        labels:
+          autoheal: "true"
+
+    watchtower:
+        image: nickfedor/watchtower:latest
+        container_name: snowflake-watchtower
+        restart: unless-stopped
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+        command: snowflake-proxy
+
+    autoheal:
+        image: willfarrell/autoheal:latest
+        container_name: snowflake-autoheal
+        restart: unless-stopped
+        environment:
+         AUTOHEAL_CONTAINER_LABEL: all
+        volumes:
+         - /etc/localtime:/etc/localtime:ro
+         - /var/run/docker.sock:/var/run/docker.sock
