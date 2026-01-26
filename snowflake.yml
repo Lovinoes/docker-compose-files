@@ -1,29 +1,91 @@
+# /opt/snowflake
+# https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake
+
+name: Snowflake
 services:
-    snowflake-proxy:
-        network_mode: host
-        image: containers.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake:latest
-        container_name: snowflake-proxy
-        restart: unless-stopped
-        # For a full list of Snowflake Proxy CLI parameters see
-        # https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/tree/main/proxy?ref_type=heads#running-a-standalone-snowflake-proxy
-        command: [ "-ephemeral-ports-range", "30000:60000" ]
-        labels:
-          autoheal: "true"
+  snowflake1:
+    image: containers.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake:latest
+    container_name: snowflake1
+    restart: unless-stopped
+    command: [ "-ephemeral-ports-range", "10000:20000" ]
+    networks:
+      - snowflake-net
+    ports:
+      - "10000-20000:10000-20000/udp"
+      - "10000-20000:10000-20000/tcp"
+    labels:
+      autoheal: "true"
 
-    watchtower:
-        image: nickfedor/watchtower:latest
-        container_name: snowflake-watchtower
-        restart: unless-stopped
-        volumes:
-          - /var/run/docker.sock:/var/run/docker.sock
-        command: snowflake-proxy
+  snowflake2:
+    image: containers.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake:latest
+    container_name: snowflake2
+    restart: unless-stopped
+    command: [ "-ephemeral-ports-range", "20001:30000" ]
+    networks:
+      - snowflake-net
+    ports:
+      - "20001-30000:20001-30000/udp"
+      - "20001-30000:20001-30000/tcp"
+    labels:
+      autoheal: "true"
 
-    autoheal:
-        image: willfarrell/autoheal:latest
-        container_name: snowflake-autoheal
-        restart: unless-stopped
-        environment:
-         AUTOHEAL_CONTAINER_LABEL: all
-        volumes:
-         - /etc/localtime:/etc/localtime:ro
-         - /var/run/docker.sock:/var/run/docker.sock
+  snowflake3:
+    image: containers.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake:latest
+    container_name: snowflake3
+    restart: unless-stopped
+    command: [ "-ephemeral-ports-range", "30001:40000" ]
+    networks:
+      - snowflake-net
+    ports:
+      - "30001-40000:30001-40000/udp"
+      - "30001-40000:30001-40000/tcp"
+    labels:
+      autoheal: "true"
+
+  snowflake4:
+    image: containers.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake:latest
+    container_name: snowflake4
+    restart: unless-stopped
+    command: [ "-ephemeral-ports-range", "40001:50000" ]
+    networks:
+      - snowflake-net
+    ports:
+      - "40001-50000:40001-50000/udp"
+      - "40001-50000:40001-50000/tcp"
+    labels:
+      autoheal: "true"
+
+  snowflake5:
+    image: containers.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake:latest
+    container_name: snowflake5
+    restart: unless-stopped
+    command: [ "-ephemeral-ports-range", "50001:60000" ]
+    networks:
+      - snowflake-net
+    ports:
+      - "50001-60000:50001-60000/udp"
+      - "50001-60000:50001-60000/tcp"
+    labels:
+      autoheal: "true"
+
+  snowflake_heal:
+    image: willfarrell/autoheal:latest
+    container_name: snowflake_heal
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: all
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+networks:
+  snowflake-net:
+    driver: bridge
+    internal: true
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/16
+          gateway: 172.21.0.1
+        - subnet: fd00:172:21::/64
+          gateway: fd00:172:21::1
