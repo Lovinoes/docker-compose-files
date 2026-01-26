@@ -1,0 +1,95 @@
+# /opt/pterodactyl/
+# https://github.com/calagopus-rs
+
+name: Calagopus
+services:
+  web:
+    image: ghcr.io/calagopus/panel:latest
+    container_name: panel-rs
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Berlin
+      - REDIS_URL=redis://cache
+      - DATABASE_URL=postgresql://panel:panel@db/panel
+      - DATABASE_MIGRATE=true
+      - PORT=8000
+      - APP_DEBUG=false
+      - APP_LOG_DIRECTORY=/var/log/calagopus
+      - APP_PRIMARY=true
+      - APP_ENCRYPTION_KEY=f3DmvEaLi6giXnvc84rOyHhKIhye
+      - APP_USE_DECRYPTION_CACHE=true
+      - APP_USE_INTERNAL_CACHE=true
+    volumes:
+      - ./data:/var/lib/calagopus
+      - ./logs:/var/log/calagopus
+    depends_on:
+      - db
+      - cache
+    labels:
+      autoheal: "true"
+    networks:
+      calagopus-net:
+        ipv4_address: 172.18.0.10
+        ipv6_address: fd00:172:18::10
+
+  db:
+    image: ghcr.io/calagopus/pgautoupgrade:18-alpine
+    container_name: panel-rs_db
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Berlin
+      - POSTGRES_USER=panel
+      - POSTGRES_PASSWORD=panel
+      - POSTGRES_DB=panel
+      - PGDATA=/data
+    volumes:
+      - ./postgres:/data
+    labels:
+      autoheal: "true"
+    networks:
+      calagopus-net:
+        ipv4_address: 172.18.0.11
+        ipv6_address: fd00:172:18::11
+
+  cache:
+    image: ghcr.io/calagopus/valkey:latest
+    container_name: panel-rs_cache
+    restart: unless-stopped
+    command: --protected-mode no --save 60 1
+    environment:
+      TZ: Europe/Berlin
+    volumes:
+      - ./cache:/data
+    labels:
+      autoheal: "true"
+    networks:
+      calagopus-net:
+        ipv4_address: 172.18.0.12
+        ipv6_address: fd00:172:18::12
+
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: panel-rs_heal
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: "true"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      calagopus-net:
+        ipv4_address: 172.18.0.13
+        ipv6_address: fd00:172:18::13
+
+networks:
+  calagopus-net:
+    driver: bridge
+    enable_ipv6: true
+    internal: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.18.0.0/16
+          gateway: 172.18.0.1
+        - subnet: fd00:172:18::/64
+          gateway: fd00:172:18::1
