@@ -1,0 +1,70 @@
+# https://github.com/lucko/bytebin
+
+name: Bytebin
+services:
+  bytebin:
+    image: ghcr.io/lucko/bytebin
+    container_name: bytebin
+    user: "0:0"
+    restart: unless-stopped
+    volumes:
+      - data:/opt/bytebin/content
+      - db:/opt/bytebin/db
+    environment:
+      # You can configure bytebin using
+      # environment variables.
+      BYTEBIN_MISC_KEYLENGTH: 15
+      BYTEBIN_CONTENT_MAXSIZE: 5
+    labels:
+      autoheal: "true"
+    networks:
+      bytebin-net:
+        ipv4_address: 172.25.0.10
+        ipv6_address: fd00:172:25::10
+
+  watchtower:
+    image: nickfedor/watchtower:latest
+    container_name: bytebin_tower
+    restart: unless-stopped
+    environment:
+      WATCHTOWER_CLEANUP: true
+      WATCHTOWER_POLL_INTERVAL: 3600
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      autoheal: "true"
+    networks:
+      bytebin-net:
+        ipv4_address: 172.25.0.11
+        ipv6_address: fd00:172:25::11
+
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: bytebin_heal
+    restart: unless-stopped
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: all
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      bytebin-net:
+        ipv4_address: 172.25.0.12
+        ipv6_address: fd00:172:25::12
+
+volumes:
+  data: {}
+  db: {}
+
+networks:
+  bytebin-net:
+    driver: bridge
+    internal: false
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.0.0/16
+          gateway: 172.25.0.1
+        - subnet: fd00:172:25::/64
+          gateway: fd00:172:25::1
